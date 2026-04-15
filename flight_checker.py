@@ -132,8 +132,8 @@ def get_flight_details(origin_sky, origin_entity, dest_sky, dest_entity,
 
 # ── Find 10 cheapest trips for a given duration, enriched with flight details ─
 def get_cheapest_trips(origin_sky, origin_entity, dest_sky, dest_entity, duration):
-    today    = datetime.now()
-    end_date = today + timedelta(days=275)  # ~9 months
+    today    = datetime.now() + timedelta(days=1)  # start from tomorrow
+    end_date = today + timedelta(days=183)         # 6 months ahead
 
     data = fetch_calendar(
         origin_sky, origin_entity, dest_sky, dest_entity,
