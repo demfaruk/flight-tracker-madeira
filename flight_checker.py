@@ -32,13 +32,37 @@ def get_sky_id(query):
     r = requests.get(url, headers=HEADERS, params={"query": query, "locale": LOCALE}, timeout=15)
     r.raise_for_status()
     data = r.json()
-    for item in data.get("data", []):
-        if item.get("navigation", {}).get("entityType") == "AIRPORT":
-            sky_id = item["navigation"]["relevantFlightParams"]["skyId"]
-            entity_id = item["navigation"]["relevantFlightParams"]["entityId"]
-            print(f"  Found: {item['presentation']['title']} → skyId={sky_id}, entityId={entity_id}")
-            return sky_id, entity_id
-    raise ValueError(f"No airport found for query: {query}")
+
+    # Print first 400 chars of response so we can debug structure if needed
+    print(f"  searchAirport '{query}': {str(data)[:400]}")
+
+    items = data.get("data", [])
+    if not items:
+        raise ValueError(f"No results returned for: {query}")
+
+    # Try to find an AIRPORT entry first, then fall back to first result
+    chosen = None
+    for item in items:
+        entity_type = (
+            item.get("navigation", {}).get("entityType", "") or
+            item.get("entityType", "")
+        )
+        if "AIRPORT" in str(entity_type).upper():
+            chosen = item
+            break
+    if chosen is None:
+        chosen = items[0]  # just use the top result
+
+    # Navigate to skyId / entityId — try two known structures
+    sky_id    = (chosen.get("navigation", {}).get("relevantFlightParams", {}).get("skyId")
+                 or chosen.get("skyId", ""))
+    entity_id = (chosen.get("navigation", {}).get("relevantFlightParams", {}).get("entityId")
+                 or chosen.get("entityId", ""))
+
+    title = (chosen.get("presentation", {}).get("title")
+             or chosen.get("name", query))
+    print(f"  Using: {title} → skyId={sky_id}, entityId={entity_id}")
+    return sky_id, entity_id
 
 # ── Step 2: Fetch the price calendar for return trips ────────────────────────
 def fetch_calendar(origin_sky, origin_entity, dest_sky, dest_entity,
