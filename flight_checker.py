@@ -132,8 +132,8 @@ def get_flight_details(origin_sky, origin_entity, dest_sky, dest_entity,
 
 # ── Find 10 cheapest trips for a given duration, enriched with flight details ─
 def get_cheapest_trips(origin_sky, origin_entity, dest_sky, dest_entity, duration):
-    today    = datetime.now() + timedelta(days=1)  # start from tomorrow
-    end_date = today + timedelta(days=183)         # 6 months ahead
+    today    = datetime(2026, 6, 1)   # fixed start date
+    end_date = datetime(2026, 12, 31) # fixed end date
 
     data = fetch_calendar(
         origin_sky, origin_entity, dest_sky, dest_entity,
@@ -179,7 +179,7 @@ def get_cheapest_trips(origin_sky, origin_entity, dest_sky, dest_entity, duratio
         except (ValueError, TypeError):
             continue
 
-    top10 = sorted(trips, key=lambda x: x["price"])[:10]
+    top10 = sorted(trips, key=lambda x: x["price"])[:7]
 
     # Enrich each trip with airline + times from searchFlights
     print(f"  Fetching flight details for {len(top10)} trips...")
@@ -212,7 +212,7 @@ def build_email(results):
 
     for duration, trips in results.items():
         html += f"""<h3 style="background:{colors[duration]};color:white;padding:10px;border-radius:6px;margin-top:24px;">
-            {duration}-Night Trips &mdash; Top 10 Cheapest</h3>"""
+            {duration}-Night Trips &mdash; Top 7 Cheapest</h3>"""
 
         if not trips:
             html += "<p>No results found for this duration.</p>"
