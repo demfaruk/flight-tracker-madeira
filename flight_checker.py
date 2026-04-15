@@ -99,11 +99,18 @@ def get_flight_details(origin_sky, origin_entity, dest_sky, dest_entity,
             return "–"
 
     def get_carrier(leg):
-        carriers = (
-            leg.get("carriers", {}).get("marketing") or
-            leg.get("carriers", {}).get("operating") or []
-        )
-        return carriers[0].get("name", "–") if carriers else "–"
+        raw = leg.get("carriers", [])
+        # carriers can be a list directly, or a dict with "marketing"/"operating" keys
+        if isinstance(raw, list):
+            carriers = raw
+        elif isinstance(raw, dict):
+            carriers = raw.get("marketing") or raw.get("operating") or []
+        else:
+            carriers = []
+        if not carriers:
+            return "–"
+        c = carriers[0]
+        return c.get("name") or c.get("alternateId") or "–"
 
     for itin in itineraries:
         legs = itin.get("legs", [])
