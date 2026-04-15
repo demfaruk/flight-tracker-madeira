@@ -33,35 +33,17 @@ def get_sky_id(query):
     r.raise_for_status()
     data = r.json()
 
-    # Print first 400 chars of response so we can debug structure if needed
-    print(f"  searchAirport '{query}': {str(data)[:400]}")
-
-    items = data.get("data", [])
+    # Response structure: {"places": [{"skyId": "AMS", "entityId": "95565044", "placeType": "AIRPORT", ...}]}
+    items = data.get("places", [])
     if not items:
         raise ValueError(f"No results returned for: {query}")
 
-    # Try to find an AIRPORT entry first, then fall back to first result
-    chosen = None
-    for item in items:
-        entity_type = (
-            item.get("navigation", {}).get("entityType", "") or
-            item.get("entityType", "")
-        )
-        if "AIRPORT" in str(entity_type).upper():
-            chosen = item
-            break
-    if chosen is None:
-        chosen = items[0]  # just use the top result
+    # Prefer AIRPORT type, fall back to first result
+    chosen = next((i for i in items if i.get("placeType") == "AIRPORT"), items[0])
 
-    # Navigate to skyId / entityId — try two known structures
-    sky_id    = (chosen.get("navigation", {}).get("relevantFlightParams", {}).get("skyId")
-                 or chosen.get("skyId", ""))
-    entity_id = (chosen.get("navigation", {}).get("relevantFlightParams", {}).get("entityId")
-                 or chosen.get("entityId", ""))
-
-    title = (chosen.get("presentation", {}).get("title")
-             or chosen.get("name", query))
-    print(f"  Using: {title} → skyId={sky_id}, entityId={entity_id}")
+    sky_id    = chosen["skyId"]
+    entity_id = chosen["entityId"]
+    print(f"  Found: {chosen.get('name', query)} → skyId={sky_id}, entityId={entity_id}")
     return sky_id, entity_id
 
 # ── Step 2: Fetch the price calendar for return trips ────────────────────────
