@@ -1,0 +1,28 @@
+name: Daily Flight Check
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # 08:00 UTC = 10:00 Amsterdam time
+  workflow_dispatch:        # lets you also run it manually anytime
+
+jobs:
+  check-flights:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run flight checker
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          GMAIL_USER:   ${{ secrets.GMAIL_USER }}
+          GMAIL_PASS:   ${{ secrets.GMAIL_PASS }}
+          TO_EMAIL:     ${{ secrets.TO_EMAIL }}
+        run: python flight_checker.py
