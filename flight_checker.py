@@ -82,36 +82,42 @@ def get_cheapest_trips(origin_sky, origin_entity, dest_sky, dest_entity, duratio
         (end_date + timedelta(days=duration)).strftime("%Y-%m-%d"),
     )
 
-    # Navigate response — try common structures
-    days = None
-    for path in [
-        lambda d: d["data"]["flights"]["days"],
-        lambda d: d["data"]["days"],
-        lambda d: d["flights"]["days"],
-        lambda d: d["days"],
-    ]:
-        try:
-            days = path(data)
-            break
-        except (KeyError, TypeError):
-            continue
+    # Response structure: {"outboundDates": [...], "inboundDates": [...], "currency": "EUR"}
+    # Each entry looks like: {"date": "2026-05-01", "price": 99.0, ...}
+    outbound_list = data.get("outboundDates", [])
+    inbound_list  = data.get("inboundDates",  [])
 
-    if days is None:
+    if not outbound_list and not inbound_list:
         print(f"  [{duration}n] Could not parse response. Top-level keys: {list(data.keys())}")
         return []
 
+    # Build a lookup: return_date → cheapest inbound price on that date
+    inbound_by_date = {}
+    for entry in inbound_list:
+        date  = entry.get("date", "")
+        price = entry.get("price")
+        if date and price is not None:
+            p = float(price)
+            if date not in inbound_by_date or p < inbound_by_date[date]:
+                inbound_by_date[date] = p
+
     trips = []
-    for entry in days:
-        depart_date = entry.get("day", "")
-        price       = entry.get("price")
-        if not depart_date or price is None:
+    for entry in outbound_list:
+        depart_date  = entry.get("date", "")
+        outbound_price = entry.get("price")
+        if not depart_date or outbound_price is None:
             continue
         try:
-            dep_dt = datetime.strptime(depart_date, "%Y-%m-%d")
+            dep_dt      = datetime.strptime(depart_date, "%Y-%m-%d")
+            return_date = (dep_dt + timedelta(days=duration)).strftime("%Y-%m-%d")
+            inbound_price = inbound_by_date.get(return_date)
+            if inbound_price is None:
+                continue  # no matching return flight on that date
+            total_price = float(outbound_price) + inbound_price
             trips.append({
                 "depart": depart_date,
-                "return": (dep_dt + timedelta(days=duration)).strftime("%Y-%m-%d"),
-                "price":  float(price),
+                "return": return_date,
+                "price":  total_price,
             })
         except (ValueError, TypeError):
             continue
